@@ -9,8 +9,9 @@ asr-triton-service/
 ├── Dockerfile              # Docker 映像檔定義
 ├── docker-compose.yml      # 本地部署配置
 ├── models/                 # 模型儲存庫 (Model repository)
-│   └── whisper_template/   # 用於新增模型的範本
-└── scripts/                # 輔助腳本
+├── scripts/                # 輔助腳本
+└── templates/              # 模型範本
+    └── whisper_template/   # 用於新增模型的範本
 ```
 
 ## 快速開始
@@ -24,37 +25,38 @@ asr-triton-service/
 
 ### 2. 新增模型
 
-若要新增一個模型 (例如：`whisper_large_v3`)：
+<model_name> 為您要在triton server上新增的模型名稱
 
-1.  **複製範本**：
-    ```bash
-    cp -r models/whisper_template models/whisper_large_v3
-    ```
+```bash
+./scripts/run_server.sh --model <model_name>
 
-2.  **下載模型權重**：
+# 例如：
+./scripts/run_server.sh --model asia-new-bay-l-v2-ct
+```
+
+
+### 3. 下載模型權重
+    將您的模型權重放入 `models/<model_name>/faster-whisper-model/`。
+
     您可以使用輔助腳本從 Hugging Face 下載：
     ```bash
-    # 如果需要，先安裝下載腳本的依賴 (huggingface_hub)
-    pip install huggingface_hub
     # 用法：./scripts/download_model.sh <repo_id> <destination_path>
-    # 例如下載官方 large-v3:
-    ./scripts/download_model.sh systran/faster-whisper-large-v3 models/whisper_large_v3/faster-whisper-model
-    # 或下載您指定的模型:
-    # ./scripts/download_model.sh jeff7522553/asia-new-bay-l-v2-ct models/asia-new-bay-l-v2-ct/faster-whisper-model
+
+    # 例如：
+    # 官方模型
+    ./scripts/download_model.sh systran/faster-whisper-large-v3 models/<model_name>/faster-whisper-model
+    # 客製化模型
+    ./scripts/download_model.sh jeff7522553/asia-new-bay-l-v2-ct models/asia-new-bay-l-v2-ct/faster-whisper-model
     ```
-    *或者，您可以手動將 `faster-whisper-model` 資料夾 (包含 `model.bin`, `config.json` 等檔案) 放入 `models/whisper_large_v3/` 中。*
 
-3.  **更新設定**：
-    編輯 `models/whisper_large_v3/config.pbtxt`：
-    -   將 `name: "whisper_template"` 修改為 `name: "whisper_large_v3"`。
-    -   (選用) 調整 `instance_group` 以設定 GPU 使用量。
+    *若在本地執行，請確保已安裝 `huggingface_hub`。*
 
-4.  **重新啟動伺服器**：
+### 4. 重新啟動伺服器
     ```bash
     docker compose restart
     ```
 
-### 3. 測試推論
+### 5. 測試推論
 
 使用提供的 Python 腳本進行測試：
 
@@ -63,7 +65,10 @@ asr-triton-service/
 pip install tritonclient[http]
 
 # 執行測試 (若未提供音檔路徑，將生成靜音測試)
-python3 scripts/test_inference.py --model whisper_large_v3
+python3 scripts/test_inference.py --model <model_name> --audio <audio_path>
+
+# 例如：
+python3 scripts/test_inference.py --model asia-new-bay-l-v2-ct --audio test.wav
 ```
 
 ## 自定義與修改

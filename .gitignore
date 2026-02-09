@@ -1,2 +1,3 @@
 models/*
-!models/whisper_template/
+!models/.gitkeep
+templates/whisper_template/1/__pycache__

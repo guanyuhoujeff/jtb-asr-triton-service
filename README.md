@@ -11,8 +11,9 @@ asr-triton-service/
 ├── Dockerfile              # Docker image definition
 ├── docker-compose.yml      # Local deployment configuration
 ├── models/                 # Model repository
-│   └── whisper_template/   # Template for adding new models
 └── scripts/                # Helper scripts
+└── templates/              # Model templates
+    └── whisper_template/   # Template for adding new models
 ```
 
 ## Getting Started
@@ -26,34 +27,40 @@ asr-triton-service/
 
 ### 2. Add a New Model
 
-To add a new model (e.g., `whisper_large_v3`):
+<model_name> is the name of the model you want to add to the Triton server.
 
-1.  **Copy the template**:
-    ```bash
-    cp -r models/whisper_template models/whisper_large_v3
-    ```
+```bash
+./scripts/run_server.sh --model <model_name>
 
-2.  **Download Model Weights**:
-    You can use the helper script to download from Hugging Face:
-    ```bash
-    # Install dependencies for download script if needed (huggingface_hub)
-    pip install huggingface_hub
-    # Usage: ./scripts/download_model.sh <repo_id> <destination_path>
-    ./scripts/download_model.sh systran/faster-whisper-large-v3 models/whisper_large_v3/faster-whisper-model
-    ```
-    *Alternatively, manually place the `faster-whisper-model` directory (containing `model.bin`, `config.json`, etc.) inside `models/whisper_large_v3/`.*
+# Example:
+./scripts/run_server.sh --model asia-new-bay-l-v2-ct
+```
 
-3.  **Update Configuration**:
-    Edit `models/whisper_large_v3/config.pbtxt`:
-    -   Change `name: "whisper_template"` to `name: "whisper_large_v3"`.
-    -   (Optional) Adjust `instance_group` for more GPU instances.
+### 3. Download Model Weights
 
-4.  **Restart Server**:
-    ```bash
-    docker-compose restart
-    ```
+Place your model weights into `models/<model_name>/faster-whisper-model/`.
 
-### 3. Test Inference
+You can use the helper script to download from Hugging Face:
+
+```bash
+# Usage: ./scripts/download_model.sh <repo_id> <destination_path>
+
+# Example:
+# Official Model
+./scripts/download_model.sh systran/faster-whisper-large-v3 models/<model_name>/faster-whisper-model
+# Custom Model
+./scripts/download_model.sh jeff7522553/asia-new-bay-l-v2-ct models/asia-new-bay-l-v2-ct/faster-whisper-model
+```
+
+*Ensure `huggingface_hub` is installed if running locally.*
+
+### 4. Restart Server
+
+```bash
+docker compose restart
+```
+
+### 5. Test Inference
 
 Use the provided python script to test:
 
@@ -62,7 +69,10 @@ Use the provided python script to test:
 pip install tritonclient[http]
 
 # Run test (generates dummy audio if file not provided)
-python3 scripts/test_inference.py --model whisper_large_v3
+python3 scripts/test_inference.py --model <model_name> --audio <audio_path>
+
+# Example:
+python3 scripts/test_inference.py --model asia-new-bay-l-v2-ct --audio test.wav
 ```
 
 ## Customization
