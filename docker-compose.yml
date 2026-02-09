@@ -1,0 +1,21 @@
+services:
+  triton-server:
+    build: .
+    container_name: asr_triton_server
+    image: asr-triton-service:latest
+    shm_size: 4g  # Important for Triton
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8002:8002"
+    volumes:
+      - ./models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: tritonserver --model-repository=/models --log-verbose=1
+    restart: unless-stopped
