@@ -7,7 +7,12 @@ import io
 from scipy.io import wavfile
 from scipy.signal import resample_poly
 import os
+from opencc import OpenCC
 
+opencc_s2t = OpenCC('s2t')
+
+def convert_to_traditional(text: str) -> str:
+    return opencc_s2t.convert(text)
 
 def wav_to_triton_audio_bytes(wav_path, target_sr=16000):
     """
@@ -96,8 +101,10 @@ def transcribe_with_triton(client, audio_bytes_with_riff_wave, model_name="whisp
     def _infer(segment_bytes):
         inputs = _build_inputs(segment_bytes, language)
         response = client.infer(model_name=model_name, inputs=inputs)
+        if language in ["zh-TW", "zh"]:
+            return convert_to_traditional(response.as_numpy("TRANSCRIPT")[0].decode("utf-8"))
         return response.as_numpy("TRANSCRIPT")[0].decode("utf-8")
-
+    
     if duration_sec > max_chunk_sec:
         frames_per_chunk = int(max_chunk_sec * framerate)
         frame_size_bytes = n_channels * sampwidth
