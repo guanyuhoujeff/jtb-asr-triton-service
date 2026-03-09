@@ -72,8 +72,17 @@ def prepare_audio_bytes( audio_bytes , sr=16000, channels = 1, sampwidth = 2 ):
     audio_data = buf.getvalue()  # 這時候就會有 RIFF...WAVE
     return audio_data
 
-def transcribe_with_triton(audio_bytes_with_riff_wave, model_name="whisper_l_v2", language=None):
-    # 讀取音訊基本資訊，決定是否需要分段
+def _build_inputs(audio_bytes, language=None):
+    inputs = [httpclient.InferInput("AUDIO_DATA", [1], "BYTES")]
+    inputs[0].set_data_from_numpy(np.array([audio_bytes], dtype=np.object_))
+    if language:
+        lang_input = httpclient.InferInput("LANGUAGE", [1], "BYTES")
+        lang_input.set_data_from_numpy(np.array([language.encode("utf-8")], dtype=np.object_))
+        inputs.append(lang_input)
+    return inputs
+
+
+def transcribe_with_triton(client, audio_bytes_with_riff_wave, model_name="whisper_l_v2", language=None):
     with wave.open(io.BytesIO(audio_bytes_with_riff_wave), "rb") as wf:
         framerate = wf.getframerate()
         n_channels = wf.getnchannels()
@@ -85,19 +94,11 @@ def transcribe_with_triton(audio_bytes_with_riff_wave, model_name="whisper_l_v2"
     max_chunk_sec = 29
 
     def _infer(segment_bytes):
-        input_data = np.array([segment_bytes], dtype=np.object_)
-        inputs = []
-        inputs.append(httpclient.InferInput("AUDIO_DATA", [1], "BYTES"))
-        inputs[0].set_data_from_numpy(input_data)
-        if language:
-            lang_input = httpclient.InferInput("LANGUAGE", [1], "BYTES")
-            lang_input.set_data_from_numpy(np.array([language.encode("utf-8")], dtype=np.object_))
-            inputs.append(lang_input)
-        response = asr_service_client.infer(model_name=model_name, inputs=inputs)
+        inputs = _build_inputs(segment_bytes, language)
+        response = client.infer(model_name=model_name, inputs=inputs)
         return response.as_numpy("TRANSCRIPT")[0].decode("utf-8")
 
     if duration_sec > max_chunk_sec:
-        # 分段處理，避免一次送太長造成辨識錯誤
         frames_per_chunk = int(max_chunk_sec * framerate)
         frame_size_bytes = n_channels * sampwidth
         transcripts = []
@@ -115,33 +116,19 @@ def transcribe_with_triton(audio_bytes_with_riff_wave, model_name="whisper_l_v2"
             transcripts.append(_infer(chunk_wav_bytes))
         return " ".join(transcripts)
 
-    input_data = np.array([audio_bytes_with_riff_wave ], dtype=np.object_)
-    inputs = []
-    # print("input_data", input_data)
-    inputs.append(httpclient.InferInput("AUDIO_DATA", [1], "BYTES"))
-    inputs[0].set_data_from_numpy(input_data)
-    if language:
-        lang_input = httpclient.InferInput("LANGUAGE", [1], "BYTES")
-        lang_input.set_data_from_numpy(np.array([language.encode("utf-8")], dtype=np.object_))
-        inputs.append(lang_input)
-    # 發送請求
-    response = triton_client.infer(model_name=model_name, inputs=inputs)
-    # 獲取結果
-    asr_text = response.as_numpy("TRANSCRIPT")[0].decode("utf-8")
-    return asr_text
+    return _infer(audio_bytes_with_riff_wave)
 
-def main(model_name, audio_path, language=None):
-    # Create dummy audio data if file doesn't exist or not provided
-    # In a real test, load actual audio bytes
+
+def main(client, model_name, audio_path, language=None):
     if not audio_path:
         print("No audio file provided, creating dummy 1-second silence (16kHz)...")
-        # 16000 samples of zeros (silence), 16-bit PCM
         audio_data = np.zeros(16000, dtype=np.int16).tobytes()
     else:
         audio_data = wav_to_triton_audio_bytes(audio_path)
 
-    asr_text = transcribe_with_triton(audio_data, model_name, language)
+    asr_text = transcribe_with_triton(client, audio_data, model_name, language)
     print("Triton ASR warm up result:", asr_text)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -150,7 +137,7 @@ if __name__ == '__main__':
     parser.add_argument('--audio', type=str, required=False, help='Path to audio file')
     parser.add_argument('--lang', type=str, required=False, help='Language code')
     args = parser.parse_args()
-    
+
     try:
         triton_client = httpclient.InferenceServerClient(url=args.url)
     except Exception as e:
@@ -161,4 +148,4 @@ if __name__ == '__main__':
         print("FAILED : is_server_live")
         sys.exit(1)
 
-    main(args.model, args.audio, args.lang)
+    main(triton_client, args.model, args.audio, args.lang)

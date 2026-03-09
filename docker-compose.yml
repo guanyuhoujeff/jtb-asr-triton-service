@@ -3,11 +3,11 @@ services:
     build: .
     container_name: asr_triton_server
     image: asr-triton-service:latest
-    shm_size: 4g  # Important for Triton
+    shm_size: 4g
     ports:
-      - "8000:8000"
-      - "8001:8001"
-      - "8002:8002"
+      - "${HTTP_PORT:-8000}:8000"
+      - "${GRPC_PORT:-8001}:8001"
+      - "${METRICS_PORT:-8002}:8002"
     volumes:
       - ./models:/models
     deploy:
@@ -17,5 +17,10 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    command: tritonserver --model-repository=/models --log-verbose=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v2/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
     restart: unless-stopped

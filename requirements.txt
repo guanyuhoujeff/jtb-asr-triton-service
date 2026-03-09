@@ -1,3 +1,4 @@
 faster-whisper
 tritonclient[http]
 numpy
+scipy

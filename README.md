@@ -11,50 +11,56 @@ asr-triton-service/
 ├── Dockerfile              # Docker image definition
 ├── docker-compose.yml      # Local deployment configuration
 ├── models/                 # Model repository
-└── scripts/                # Helper scripts
+├── scripts/                # Helper scripts
+│   ├── run_server.sh       # Build, add model, and start server
+│   └── test_inference.py   # Test inference client
 └── templates/              # Model templates
     └── whisper_template/   # Template for adding new models
 ```
 
 ## Getting Started
 
-### 1. Build and Run
+### 1. Start the Server
 
 ```bash
-# Build and start the server
+# Start the server (models must already exist)
 ./scripts/run_server.sh
+
+# Build the Docker image and start the server
+./scripts/run_server.sh --build
 ```
 
 ### 2. Add a New Model
 
-<model_name> is the name of the model you want to add to the Triton server.
+`<model_name>` is the name of the model on the Triton server, `<hf_repo_id>` is the HuggingFace repo ID.
 
 ```bash
-./scripts/run_server.sh --model <model_name>
+./scripts/run_server.sh --model <model_name> --repo_id <hf_repo_id>
 
-# Example:
-./scripts/run_server.sh --model asia-new-bay-l-v2-ct
+# Example (first time, with --build):
+./scripts/run_server.sh --model asia-new-bay-l-v2-ct --repo_id jeff7522553/asia-new-bay-l-v2-ct --build
 ```
 
-### 3. Download Model Weights
+This script will automatically:
+1. Create the model directory from the template
+2. Download model weights from HuggingFace
+3. Start the server (add `--build` to rebuild the Docker image)
 
-Place your model weights into `models/<model_name>/faster-whisper-model/`.
+If the model already exists, steps 1 and 2 will be skipped.
 
-You can use the helper script to download from Hugging Face:
+### 3. Custom Ports
 
 ```bash
-# Usage: ./scripts/download_model.sh <repo_id> <destination_path>
+# Custom HTTP port
+./scripts/run_server.sh --port 9000
 
-# Example:
-# Official Model
-./scripts/download_model.sh systran/faster-whisper-large-v3 models/<model_name>/faster-whisper-model
-# Custom Model
-./scripts/download_model.sh jeff7522553/asia-new-bay-l-v2-ct models/asia-new-bay-l-v2-ct/faster-whisper-model
+# Custom all ports
+./scripts/run_server.sh --port 9000 --grpc-port 9001 --metrics-port 9002
 ```
 
-*Ensure `huggingface_hub` is installed if running locally.*
+Default ports: HTTP `8000`, gRPC `8001`, Metrics `8002`.
 
-### 4. Restart Server
+### 4. Restart Server (manual)
 
 ```bash
 docker compose restart
@@ -62,20 +68,23 @@ docker compose restart
 
 ### 5. Test Inference
 
-Use the provided python script to test:
-
 ```bash
-# Install tritonclient if not present
-pip install tritonclient[http]
+# Install dependencies
+pip install -r requirements.txt
 
 # Run test (generates dummy audio if file not provided)
 python3 scripts/test_inference.py --model <model_name> --audio <audio_path>
 
-# Example:
-python3 scripts/test_inference.py --model asia-new-bay-l-v2-ct --audio test.wav
+# Examples:
+# Specifying language is recommended for better accuracy
+python3 scripts/test_inference.py --model asia-new-bay-l-v2-ct --audio zh-test.wav --lang zh
+python3 scripts/test_inference.py --model asia-new-bay-l-v2-ct --audio en-test.wav --lang en
+
+# Specify a different server URL
+python3 scripts/test_inference.py --url 192.168.1.100:8000 --model asia-new-bay-l-v2-ct --audio zh-test.wav
 ```
 
 ## Customization
 
--   **Dependencies**: Valid Python packages are defined in `Dockerfile` under the `micromamba` installation section.
--   **Model Logic**: The inference logic is in `models/<model_name>/1/model.py`. You can modify `TritonPythonModel` class to change how audio is processed or how the model is called.
+-   **Dependencies**: Python packages are defined in `Dockerfile` under the `pip install` section.
+-   **Model Logic**: The inference logic is in `models/<model_name>/1/model.py`. You can modify the `TritonPythonModel` class to change how audio is processed or how the model is called.
