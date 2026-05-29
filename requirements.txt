@@ -2,3 +2,4 @@ faster-whisper
 tritonclient[http]
 numpy
 scipy
+opencc
