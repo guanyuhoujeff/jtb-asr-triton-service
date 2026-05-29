@@ -16,6 +16,33 @@ asr-triton-service/
     └── whisper_template/   # 用於新增模型的範本
 ```
 
+## 事前準備（首次使用必裝）
+
+執行 `run_server.sh` 之前，請先確認下列環境已安裝，否則腳本會中途報錯：
+
+```bash
+# 1. Python 套件 huggingface_hub（腳本下載模型權重時使用）
+pip install huggingface_hub
+
+# 2. Docker Compose v2 外掛（腳本以 `docker compose` 指令建置/啟動）
+sudo apt-get update
+# 視 Docker 安裝來源擇一：
+#   (a) 用 Ubuntu 內建源安裝的 docker.io → 套件名為 docker-compose-v2
+sudo apt-get install -y docker-compose-v2
+#   (b) 用 Docker 官方源安裝的 docker-ce → 套件名為 docker-compose-plugin
+# sudo apt-get install -y docker-compose-plugin
+docker compose version   # 驗證安裝成功
+```
+
+> **常見錯誤對照**
+> - `ModuleNotFoundError: No module named 'huggingface_hub'` → 未安裝 `huggingface_hub`，執行上方第 1 步。
+> - `docker: unknown command: docker compose` → 未安裝 Docker Compose v2 外掛，執行上方第 2 步。
+
+此外，`docker-compose.yml` 預設要求 **NVIDIA GPU**（`driver: nvidia, count: 1`），請確認：
+
+- 已安裝 NVIDIA 驅動，`nvidia-smi` 可正常顯示 GPU。
+- 已安裝 [`nvidia-container-toolkit`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)，讓 Docker 容器能存取 GPU。
+
 ## 快速開始
 
 ### 1. 啟動伺服器
@@ -36,7 +63,7 @@ asr-triton-service/
 ./scripts/run_server.sh --model <model_name> --repo_id <hf_repo_id>
 
 # 例如（首次使用，搭配 --build）：
-./scripts/run_server.sh --model asia-new-bay-l-v2-ct --repo_id jeff7522553/asia-new-bay-l-v2-ct --build
+./scripts/run_server.sh --model tvgh-l-v2-ct2 --repo_id jeff7522553/tvgh-l-v2-ct2 --build
 ```
 
 此腳本會自動：

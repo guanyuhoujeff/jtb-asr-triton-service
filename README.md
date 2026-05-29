@@ -18,6 +18,33 @@ asr-triton-service/
     └── whisper_template/   # Template for adding new models
 ```
 
+## Prerequisites (required on first use)
+
+Before running `run_server.sh`, make sure the following are installed, otherwise the script will fail partway through:
+
+```bash
+# 1. Python package huggingface_hub (used by the script to download model weights)
+pip install huggingface_hub
+
+# 2. Docker Compose v2 plugin (the script builds/starts with the `docker compose` command)
+sudo apt-get update
+# Pick one depending on how Docker was installed:
+#   (a) docker.io from the Ubuntu repo  -> package name is docker-compose-v2
+sudo apt-get install -y docker-compose-v2
+#   (b) docker-ce from Docker's official repo -> package name is docker-compose-plugin
+# sudo apt-get install -y docker-compose-plugin
+docker compose version   # verify the install
+```
+
+> **Common errors**
+> - `ModuleNotFoundError: No module named 'huggingface_hub'` → `huggingface_hub` is missing, run step 1 above.
+> - `docker: unknown command: docker compose` → the Docker Compose v2 plugin is missing, run step 2 above.
+
+In addition, `docker-compose.yml` requires an **NVIDIA GPU** by default (`driver: nvidia, count: 1`), so make sure:
+
+- The NVIDIA driver is installed and `nvidia-smi` shows the GPU.
+- [`nvidia-container-toolkit`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) is installed so Docker containers can access the GPU.
+
 ## Getting Started
 
 ### 1. Start the Server

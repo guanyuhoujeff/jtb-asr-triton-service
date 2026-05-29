@@ -32,7 +32,7 @@ class TritonPythonModel:
         self.model = WhisperModel(
             model_path,
             device="cuda",
-            compute_type="float16",
+            compute_type="int8_float16",
             cpu_threads=4,
         )
         print("Whisper model loaded successfully.")
